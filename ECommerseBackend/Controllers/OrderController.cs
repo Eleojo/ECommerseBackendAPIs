@@ -1,10 +1,8 @@
 ﻿using Core.OrderServices;
 using Data.Dtos;
 using Data.Enums;
-using Data.Model;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace ECommerseBackendApi.Controllers
 {
@@ -20,7 +18,7 @@ namespace ECommerseBackendApi.Controllers
         }
 
         [HttpPost("place-order")]
-        public async Task<IActionResult> PlaceOrder( List<OrderItemDto> orderItems)
+        public async Task<IActionResult> PlaceOrder( List<PlaceOrderDto> orderItems)
         {
             var userIdClaim = User.FindFirst("customNameIdentifier");
             if (userIdClaim == null)
@@ -37,7 +35,7 @@ namespace ECommerseBackendApi.Controllers
                 return Ok("Order placed successfully");
             }
 
-            return BadRequest("Failed to place the order");
+            return BadRequest("Failed to place the order.");
         }
 
         [HttpGet("user-orders")]
@@ -110,6 +108,20 @@ namespace ECommerseBackendApi.Controllers
             await _orderService.UpdateOrderStatusAsync(orderId, status);
             return Ok("Order status updated.");
         }
+
+        [HttpPut("{orderId}/status")]
+        [Authorize(Roles = "Admin, Seller")]
+        public async Task<IActionResult> UpdateOrderStatus(int orderId, [FromBody] OrderStatusEnum newStatus)
+        {
+            var updated = await _orderService.UpdateOrderStatus(orderId, newStatus);
+            if (!updated)
+            {
+                return NotFound("Order not found");
+            }
+
+            return Ok("Order status updated");
+        }
+
 
     }
 

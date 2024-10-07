@@ -6,6 +6,7 @@ namespace Data.Model
         public Guid Id { get; set; }
         public Guid UserId { get; set; }
         public User User { get; set; }
+        public bool IsOrdered { get; set; }
         public ICollection<CartItem> CartItems { get; set; }
     }
 }

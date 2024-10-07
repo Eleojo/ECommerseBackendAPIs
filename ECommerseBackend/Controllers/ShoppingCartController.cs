@@ -38,7 +38,7 @@ namespace ECommerseBackendApi.Controllers
                 }
 
                 // Call the service to add the item to the cart
-                bool result = await _shoppingCartService.AddToCartAsync(request.ShoppingCartId, request.ProductId, request.Quantity);
+                bool result = await _shoppingCartService.AddToCartAsync(userId, request.ProductId, request.Quantity);
 
                 if (result)
                 {

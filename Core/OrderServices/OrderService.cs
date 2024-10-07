@@ -1,4 +1,5 @@
 ﻿using Core.ProductServices;
+using Core.ShoppingCartServices;
 using Data.AppDbContext;
 using Data.Dtos;
 using Data.Enums;
@@ -12,14 +13,16 @@ namespace Core.OrderServices
     {
         private readonly ECommerceDbContext _context;
         private readonly IProductService _productService;
+        private readonly IShoppingCartService _shoppingCartService;
 
-        public OrderService(ECommerceDbContext context, IProductService productService)
+        public OrderService(ECommerceDbContext context, IProductService productService, IShoppingCartService shoppingCartService)
         {
             _context = context;
             _productService = productService;
+            this._shoppingCartService = shoppingCartService;
         }
 
-        public async Task<OrderResponseDto> PlaceOrderAsync(Guid userId, List<OrderItemDto> orderItems)
+        public async Task<OrderResponseDto> PlaceOrderAsync(Guid userId, List<PlaceOrderDto> orderItems)
         {
             if (orderItems == null || !orderItems.Any())
             {
@@ -54,6 +57,7 @@ namespace Core.OrderServices
 
                     // Update product stock
                     product.Stock -= item.Quantity;
+                    _context.Products.Update(product);
                 }
 
                 // Create order
@@ -65,7 +69,13 @@ namespace Core.OrderServices
                     OrderItems = orderItemsWithPrices
                 };
 
+
                 _context.Orders.Add(order);
+
+                // Mark cart as ordered
+                var cart = await _context.ShoppingCarts
+                .FirstOrDefaultAsync(c => c.UserId == userId && !c.IsOrdered);
+                await _shoppingCartService.MarkCartAsOrderedAsync(cart.Id);
 
                 // Save all changes
                 await _context.SaveChangesAsync();
@@ -90,31 +100,13 @@ namespace Core.OrderServices
         }
 
 
-        public async Task<List<Order>> GetOrdersByUserIdAsync(Guid userId)
+        public async Task<IEnumerable<OrderDto>> GetOrdersByUserIdAsync(Guid userId)
         {
-            return await _context.Orders
+            var orders = await _context.Orders
                 .Where(o => o.UserId == userId)
                 .Include(o => o.OrderItems)
                 .ThenInclude(oi => oi.Product)
                 .ToListAsync();
-        }
-
-        public async Task<Order> GetOrderByIdAsync(Guid orderId)
-        {
-            return await _context.Orders
-                .Include(o => o.OrderItems)
-                .ThenInclude(oi => oi.Product)
-                .FirstOrDefaultAsync(o => o.Id == orderId);
-        }
-
-        public async Task<IEnumerable<OrderDto>> GetOrdersBySellerAsync(Guid sellerId)
-        {
-            var orders = await _context.Orders
-                .Include(o => o.OrderItems)
-                .ThenInclude(oi => oi.Product)
-                .Where(o => o.OrderItems.Any(oi => oi.Product.SellerId == sellerId))
-                .ToListAsync();
-
             return orders.Select(o => new OrderDto
             {
                 Id = o.Id,
@@ -124,10 +116,80 @@ namespace Core.OrderServices
                 {
                     ProductId = oi.ProductId,
                     Quantity = oi.Quantity,
-                    UnitPrice = oi.UnitPrice
-                }).ToList()
+                    UnitPrice = oi.UnitPrice,
+                    ProductName = oi.Product.Name,
+                }).ToList(),
+
+
             });
         }
+
+        public async Task<OrderDto> GetOrderByIdAsync(Guid orderId)
+        {
+            // Fetch the order and related data
+            var order = await _context.Orders
+                .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
+                .FirstOrDefaultAsync(o => o.Id == orderId);
+
+            // Check if the order exists
+            if (order == null)
+            {
+                return null; // Handle this case as you need (e.g., throw exception or return NotFound)
+            }
+
+            // Map the Order entity to the OrderDto
+            var orderDto = new OrderDto
+            {
+                Id = order.Id,
+                OrderDate = order.OrderDate,
+                TotalAmount = order.TotalAmount,
+                OrderItems = order.OrderItems.Select(oi => new OrderItemDto
+                {
+                    ProductId = oi.ProductId,
+                    ProductName = oi.Product.Name,  // Assuming Product has a 'Name' property
+                    Quantity = oi.Quantity,
+                    UnitPrice = oi.UnitPrice
+                }).ToList()
+            };
+
+            return orderDto;
+        }
+
+
+        public async Task<IEnumerable<OrderDto>> GetOrdersBySellerAsync(Guid sellerId)
+        {
+            try
+            {
+                // Fetch orders where the seller has products in the order items
+                var orders = await _context.Orders
+                    .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.Product)
+                    .Where(o => o.OrderItems.Any(oi => oi.Product.SellerId == sellerId))
+                    .ToListAsync();
+
+                // Return the orders as DTOs
+                return orders.Select(o => new OrderDto
+                {
+                    Id = o.Id,
+                    OrderDate = o.OrderDate,
+                    TotalAmount = o.TotalAmount,
+                    OrderItems = o.OrderItems.Select(oi => new OrderItemDto
+                    {
+                        ProductId = oi.ProductId,
+                        Quantity = oi.Quantity,
+                        UnitPrice = oi.UnitPrice,
+                        ProductName = oi.Product.Name,
+                    }).ToList()
+                });
+            }
+            catch (Exception ex)
+            {
+                // Handle or log the exception
+                throw new ApplicationException($"An error occurred while fetching orders for seller: {ex.Message}", ex);
+            }
+        }
+
 
         public async Task<bool> UpdateOrderStatusAsync(Guid OrderId, OrderStatusEnum status)
         {
@@ -139,6 +201,27 @@ namespace Core.OrderServices
                 return true;
             }
             return false;
+        }
+
+        public async Task<bool> UpdateOrderStatus(int orderId, OrderStatusEnum newStatus)
+        {
+            var order = await _context.Orders.FindAsync(orderId);
+            if (order == null)
+            {
+                return false;  // Order not found
+            }
+
+            // Update status
+            order.Status = newStatus;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        // Method to get order status for a user
+        public async Task<OrderStatusEnum> GetOrderStatus(int orderId)
+        {
+            var order = await _context.Orders.FindAsync(orderId);
+            return order?.Status ?? OrderStatusEnum.Pending;
         }
     }
 }

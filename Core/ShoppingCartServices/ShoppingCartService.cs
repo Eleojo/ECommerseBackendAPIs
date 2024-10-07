@@ -14,45 +14,27 @@ namespace Core.ShoppingCartServices
         {
             _context = context;
         }
-        public async Task<ShoppingCart> CreateCartAsync(Guid userId)
+        public async Task<bool> AddToCartAsync(Guid userId, Guid productId, int quantity)
         {
-            var existingCart = await _context.ShoppingCarts.FirstOrDefaultAsync(c => c.UserId == userId);
-
-            if (existingCart != null)
-            {
-                return existingCart; // Return existing cart if found
-            }
-
-            var newCart = new ShoppingCart
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                CartItems = new List<CartItem>()
-            };
-
-            await _context.ShoppingCarts.AddAsync(newCart);
-            await _context.SaveChangesAsync();
-
-            return newCart;
-        }
-
-
-        public async Task<bool> AddToCartAsync(Guid shoppingCartId, Guid productId, int quantity)
-        {
+            // Check if the product exists and has enough stock
             var product = await _context.Products.FindAsync(productId);
             if (product == null || product.Stock < quantity)
             {
                 throw new Exception("Product not available or insufficient stock.");
-                return false;
             }
 
-            // Check if the cart item already exists
+            // Find the active cart for the user, or create a new one if none exists
+            var cart = await _context.ShoppingCarts
+                .FirstOrDefaultAsync(c => c.UserId == userId && !c.IsOrdered)
+                ?? await CreateCartAsync(userId); // Create new cart if none found
+
+            // Check if the cart item already exists in the cart
             var existingCartItem = await _context.CartItems
-                .FirstOrDefaultAsync(ci => ci.ShoppingCartId == shoppingCartId && ci.ProductId == productId);
+                .FirstOrDefaultAsync(ci => ci.ShoppingCartId == cart.Id && ci.ProductId == productId);
 
             if (existingCartItem != null)
             {
-                // Update the quantity of the existing item
+                // Update the quantity of the existing cart item
                 existingCartItem.Quantity += quantity;
             }
             else
@@ -61,7 +43,7 @@ namespace Core.ShoppingCartServices
                 var cartItem = new CartItem
                 {
                     Id = Guid.NewGuid(),
-                    ShoppingCartId = shoppingCartId,
+                    ShoppingCartId = cart.Id,
                     ProductId = productId,
                     Quantity = quantity
                 };
@@ -73,6 +55,23 @@ namespace Core.ShoppingCartServices
             await _context.SaveChangesAsync();
             return true;
         }
+
+        public async Task<ShoppingCart> CreateCartAsync(Guid userId)
+        {
+            var newCart = new ShoppingCart
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                CartItems = new List<CartItem>(),
+                IsOrdered = false // Indicates that the cart is still active
+            };
+
+            await _context.ShoppingCarts.AddAsync(newCart);
+            await _context.SaveChangesAsync();
+
+            return newCart;
+        }
+
 
         public async Task<bool> RemoveFromCartAsync(Guid shoppingCartId, Guid productId)
         {
@@ -114,6 +113,20 @@ namespace Core.ShoppingCartServices
                 }).ToList()
             };
         }
+        public async Task<bool> MarkCartAsOrderedAsync(Guid cartId)
+        {
+            var cart = await _context.ShoppingCarts.FindAsync(cartId);
+            if (cart == null)
+            {
+                throw new Exception("Cart not found.");
+            }
+
+            cart.IsOrdered = true; // Mark the cart as completed
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
 
     }
 }

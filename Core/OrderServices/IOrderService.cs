@@ -6,10 +6,12 @@ namespace Core.OrderServices
 {
     public interface IOrderService
     {
-        Task<OrderResponseDto> PlaceOrderAsync(Guid userId, List<OrderItemDto> orderItems);
-        Task<List<Order>> GetOrdersByUserIdAsync(Guid userId);
-        Task<Order> GetOrderByIdAsync(Guid orderId);
+        Task<OrderResponseDto> PlaceOrderAsync(Guid userId, List<PlaceOrderDto> orderItems);
+        Task<IEnumerable<OrderDto>> GetOrdersByUserIdAsync(Guid userId);
+        Task<OrderDto> GetOrderByIdAsync(Guid orderId);
+
         Task<IEnumerable<OrderDto>> GetOrdersBySellerAsync(Guid sellerId);
         Task<bool> UpdateOrderStatusAsync(Guid OrderId, OrderStatusEnum status);
+        Task<bool> UpdateOrderStatus(int orderId, OrderStatusEnum newStatus);
     }
 }
