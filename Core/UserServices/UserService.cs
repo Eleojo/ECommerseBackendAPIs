@@ -32,7 +32,7 @@ namespace Core.UserServices
                 LastName = userDto.LastName,
                 Email = userDto.Email,
                 PasswordHash = _authenticationService.HashPassword(userDto.Password),
-                Role = UserRoleEnum.Seller // Default role
+                Role = UserRoleEnum.Admin // Default role
             };
 
             await _context.Users.AddAsync(user);

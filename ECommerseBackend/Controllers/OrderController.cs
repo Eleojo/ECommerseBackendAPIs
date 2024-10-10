@@ -86,11 +86,12 @@ namespace ECommerseBackendApi.Controllers
             return Ok(orders);
         }
 
-        [Authorize(Policy ="RequireSellerRole")]
-        [HttpPost("update-order-status")]
-        public async Task<IActionResult> UpdateOrderStatus(Guid orderId, OrderStatusEnum status)
+        
+
+        [HttpPut("update-order-status")]
+        [Authorize(Policy = "RequireSellerRole")]
+        public async Task<IActionResult> UpdateOrderStatus(Guid orderId, [FromBody] OrderStatusEnum newStatus)
         {
-            // Seller can only update their own order items
             var userIdClaim = User.FindFirst("customNameIdentifier");
             if (userIdClaim == null)
             {
@@ -98,28 +99,21 @@ namespace ECommerseBackendApi.Controllers
             }
 
             Guid sellerId = Guid.Parse(userIdClaim.Value);
+            var result = await _orderService.UpdateOrderStatusAsync(orderId, newStatus);
 
-            var order = await _orderService.GetOrdersBySellerAsync(sellerId);
-            if (!order.Any(o => o.Id == orderId))
+            if (result != null)
             {
-                return NotFound("Order not found for the seller.");
+                var oldStatus = result.OldStatus;
+                var updatedStatus = result.NewStatus;
+                return Ok(new
+                {
+                    message = $"Order status changed from {oldStatus} to {updatedStatus}",
+                    //oldStatus = oldStatus,
+                    //newStatus = updatedStatus
+                });
             }
 
-            await _orderService.UpdateOrderStatusAsync(orderId, status);
-            return Ok("Order status updated.");
-        }
-
-        [HttpPut("{orderId}/status")]
-        [Authorize(Roles = "Admin, Seller")]
-        public async Task<IActionResult> UpdateOrderStatus(int orderId, [FromBody] OrderStatusEnum newStatus)
-        {
-            var updated = await _orderService.UpdateOrderStatus(orderId, newStatus);
-            if (!updated)
-            {
-                return NotFound("Order not found");
-            }
-
-            return Ok("Order status updated");
+            return NotFound(new { message = "Order not found" });
         }
 
 

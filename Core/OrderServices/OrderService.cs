@@ -190,31 +190,21 @@ namespace Core.OrderServices
             }
         }
 
-
-        public async Task<bool> UpdateOrderStatusAsync(Guid OrderId, OrderStatusEnum status)
+        public async Task<StatusChangeDto> UpdateOrderStatusAsync(Guid OrderId, OrderStatusEnum status)
         {
             var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == OrderId);
             if (order != null)
             {
+                var oldStatus = order.Status;
                 order.Status = status;
                 await _context.SaveChangesAsync();
-                return true;
+                return new StatusChangeDto
+                {
+                    OldStatus = oldStatus,
+                    NewStatus = order.Status,
+                };
             }
-            return false;
-        }
-
-        public async Task<bool> UpdateOrderStatus(int orderId, OrderStatusEnum newStatus)
-        {
-            var order = await _context.Orders.FindAsync(orderId);
-            if (order == null)
-            {
-                return false;  // Order not found
-            }
-
-            // Update status
-            order.Status = newStatus;
-            await _context.SaveChangesAsync();
-            return true;
+            return null;
         }
 
         // Method to get order status for a user

@@ -1,6 +1,5 @@
 ﻿using Data.Dtos;
 using Data.Enums;
-using Data.Model;
 
 namespace Core.OrderServices
 {
@@ -11,7 +10,6 @@ namespace Core.OrderServices
         Task<OrderDto> GetOrderByIdAsync(Guid orderId);
 
         Task<IEnumerable<OrderDto>> GetOrdersBySellerAsync(Guid sellerId);
-        Task<bool> UpdateOrderStatusAsync(Guid OrderId, OrderStatusEnum status);
-        Task<bool> UpdateOrderStatus(int orderId, OrderStatusEnum newStatus);
+        Task<StatusChangeDto> UpdateOrderStatusAsync(Guid OrderId, OrderStatusEnum status);
     }
 }
