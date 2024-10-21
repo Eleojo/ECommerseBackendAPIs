@@ -29,6 +29,8 @@ namespace ECommerseBackend
 
             builder.Services.AddDbContext<ECommerceDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+            
+            builder.Services.AddMemoryCache(); // Enable in-memory caching
 
             builder.Services.AddCors(options =>
             {

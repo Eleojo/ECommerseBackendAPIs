@@ -34,7 +34,7 @@ namespace ECommerseBackendApi.Controllers
         [HttpGet("get-products")]
         public async Task<IActionResult> GetProducts()
         {
-            var products = await _productService.GetProducts();
+            var products = await _productService.GetProductsAsync();
             return Ok(products);
         }
 

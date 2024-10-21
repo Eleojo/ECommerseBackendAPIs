@@ -7,7 +7,7 @@ namespace Core.ProductServices
     {
         Task<Product> CreateProductAsync(ProductDto productDto, Guid sellerId);
         Task<Product> GetProductBiId(Guid productId);
-        Task<List<Product>> GetProducts();
+        Task<List<Product>> GetProductsAsync();
         Task<Product> UpdateProduct(Guid ProductId, ProductDto productDto);
     }
 }

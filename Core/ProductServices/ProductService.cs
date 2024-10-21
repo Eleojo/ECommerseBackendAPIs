@@ -3,6 +3,7 @@ using Data.Dtos;
 using Data.Enums;
 using Data.Model;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 
 namespace Core.ProductServices
@@ -10,10 +11,11 @@ namespace Core.ProductServices
     public class ProductService : IProductService
     {
         private readonly ECommerceDbContext _context;
-
-        public ProductService(ECommerceDbContext context)
+        private readonly IMemoryCache _cache;
+        public ProductService(ECommerceDbContext context, IMemoryCache cache)
         {
             _context = context;
+            _cache = cache;
         }
 
         public async Task<Product> GetProductBiId(Guid productId)
@@ -24,12 +26,22 @@ namespace Core.ProductServices
             return product;
         }
 
-        public async Task<List<Product>> GetProducts()
+        public async Task<List<Product>> GetProductsAsync()
         {
-            var products = await _context.Products.ToListAsync();
-            if (products == null)
+            var cacheKey = "productList";
+            if (!_cache.TryGetValue(cacheKey, out List<Product> products))
             {
-                return null;
+                products = await _context.Products.ToListAsync();
+
+                // Set cache options (e.g., expiration)
+                var cacheOptions = new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30),
+                    SlidingExpiration = TimeSpan.FromMinutes(10)
+                };
+
+                // Save data in cache
+                _cache.Set(cacheKey, products, cacheOptions);
             }
             return products;
         }
