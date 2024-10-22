@@ -38,10 +38,10 @@ namespace ECommerseBackendApi.Controllers
             return Ok(products);
         }
 
-        [HttpGet("get-product")]
+        [HttpGet("get-product-by-id")]
         public async Task<IActionResult> GetProduct(Guid id)
         {
-            var product = await _productService.GetProductBiId(id);
+            var product = await _productService.GetProductById(id);
             if (product == null)
             {
                 return NotFound();

@@ -3,7 +3,8 @@ using Data.Dtos;
 using Data.Enums;
 using Data.Model;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.Distributed;
+using System.Text.Json;
 
 
 namespace Core.ProductServices
@@ -11,40 +12,68 @@ namespace Core.ProductServices
     public class ProductService : IProductService
     {
         private readonly ECommerceDbContext _context;
-        private readonly IMemoryCache _cache;
-        public ProductService(ECommerceDbContext context, IMemoryCache cache)
+        private readonly IDistributedCache _cache;
+        private const string CacheKey = "productList";
+
+        public ProductService(ECommerceDbContext context, IDistributedCache cache)
         {
             _context = context;
             _cache = cache;
         }
 
-        public async Task<Product> GetProductBiId(Guid productId)
+        public async Task<Product> GetProductById(Guid productId)
         {
-            var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == productId);
-            if (product == null)
-            { return null; }
-            return product;
+            // Get the cached product list (or null if not cached)
+            var products = await GetCachedProductsAsync();
+
+            // If products are cached, try to find the product in the cache
+            if (products != null)
+            {
+                var cachedProduct = products.FirstOrDefault(p => p.Id == productId);
+                if (cachedProduct != null)
+                {
+                    return cachedProduct;
+                }
+            }
+
+            // If product is not in the cache, fetch it from the database
+            var dbProduct = await _context.Products.FirstOrDefaultAsync(p => p.Id == productId);
+            if (dbProduct != null)
+            {
+                // If no cached list exists, initialize it
+                if (products == null)
+                {
+                    products = new List<Product>();
+                }
+
+                // Add the product to the list and update the cache
+                products.Add(dbProduct);
+                await SetCachedProductsAsync(products);
+
+                return dbProduct;
+            }
+
+            return null; // If product is not found in the database
         }
+
 
         public async Task<List<Product>> GetProductsAsync()
         {
-            var cacheKey = "productList";
-            if (!_cache.TryGetValue(cacheKey, out List<Product> products))
+            // Try to get the cached products
+            var products = await GetCachedProductsAsync();
+
+            // If cache is empty, fetch products from the database
+            if (products == null)
             {
                 products = await _context.Products.ToListAsync();
 
-                // Set cache options (e.g., expiration)
-                var cacheOptions = new MemoryCacheEntryOptions
-                {
-                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30),
-                    SlidingExpiration = TimeSpan.FromMinutes(10)
-                };
-
-                // Save data in cache
-                _cache.Set(cacheKey, products, cacheOptions);
+                // Set the products in the cache
+                await SetCachedProductsAsync(products);
             }
+
             return products;
         }
+
         public async Task<Product> CreateProductAsync(ProductDto productDto, Guid sellerId)
         {
             var seller = await _context.Users.FindAsync(sellerId);
@@ -94,6 +123,38 @@ namespace Core.ProductServices
             // Return the updated product
             return product;
         }
+
+        private async Task<List<Product>> GetCachedProductsAsync()
+        {
+            var cachedProductsJson = await _cache.GetStringAsync(CacheKey);
+
+            if (!string.IsNullOrEmpty(cachedProductsJson))
+            {
+                Console.WriteLine("Cache Hit: Returning products from Redis.");
+                return JsonSerializer.Deserialize<List<Product>>(cachedProductsJson);
+            }
+            else
+            {
+                Console.WriteLine("Cache Miss: No products found in Redis.");
+                return null;
+            }
+        }
+
+        private async Task SetCachedProductsAsync(List<Product> products)
+        {
+            var serializedProducts = JsonSerializer.Serialize(products);
+
+            var cacheOptions = new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30),
+                SlidingExpiration = TimeSpan.FromMinutes(10)
+            };
+
+            Console.WriteLine("Setting products in Redis Cache.");
+            await _cache.SetStringAsync(CacheKey, serializedProducts, cacheOptions);
+        }
+
+
 
     }
 }

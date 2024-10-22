@@ -40,7 +40,7 @@ namespace Core.OrderServices
             {
                 foreach (var item in orderItems)
                 {
-                    var product = await _productService.GetProductBiId(item.ProductId);
+                    var product = await _productService.GetProductById(item.ProductId);
                     if (product == null || product.Stock < item.Quantity)
                     {
                         throw new Exception($"Product {item.ProductId} is not available or has insufficient stock.");

@@ -30,7 +30,13 @@ namespace ECommerseBackend
             builder.Services.AddDbContext<ECommerceDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
             
-            builder.Services.AddMemoryCache(); // Enable in-memory caching
+            builder.Services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = "localhost:6379"; // Using Redis on localhost
+                options.InstanceName = "SampleInstance";
+            });
+
+            //builder.Services.AddMemoryCache(); // Enable in-memory caching
 
             builder.Services.AddCors(options =>
             {

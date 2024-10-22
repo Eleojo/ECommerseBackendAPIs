@@ -6,7 +6,7 @@ namespace Core.ProductServices
     public interface IProductService
     {
         Task<Product> CreateProductAsync(ProductDto productDto, Guid sellerId);
-        Task<Product> GetProductBiId(Guid productId);
+        Task<Product> GetProductById(Guid productId);
         Task<List<Product>> GetProductsAsync();
         Task<Product> UpdateProduct(Guid ProductId, ProductDto productDto);
     }
