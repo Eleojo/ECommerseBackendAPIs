@@ -105,10 +105,6 @@ dotnet test
 - Deployment on **Azure** ☁️
 - Payment gateway integration
 
-## License 📄
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## Connect With Me 🤝
 
 Feel free to reach out if you have any questions or suggestions!
