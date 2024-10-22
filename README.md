@@ -1,7 +1,3 @@
-Here’s a sample `README.md` file for your GitHub project:
-
----
-
 # 🛒 E-Commerce Backend System
 
 Welcome to the **E-Commerce Backend System**! This project is a fully functional e-commerce backend built with **ASP.NET Core**. It includes features like product management, order handling, shopping carts, and user authentication with **JWT**. It also integrates **Redis caching** for improved performance.
