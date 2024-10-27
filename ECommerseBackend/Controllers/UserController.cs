@@ -1,5 +1,6 @@
 ﻿using Core.UserServices;
 using Data.Dtos;
+using Data.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -45,6 +46,16 @@ namespace ECommerseBackendApi.Controllers
 
             // Return the generated token if login was successful
             return Ok(new { Token = token });
+        }
+        [HttpPost("Change-user-role")]
+        public async Task<IActionResult> ChangeUserRole(Guid userId, UserRoleEnum role)
+        {
+            var success = await _userService.UpdateUserRole(userId, role);
+            if(!success)
+            {
+                return BadRequest("Change not succesful");
+            }
+            return Ok("User Role changed successfuly");
         }
 
         [Authorize(Policy = "RequireAdminRole")]

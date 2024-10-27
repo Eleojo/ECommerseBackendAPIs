@@ -1,4 +1,5 @@
 ﻿using Data.Dtos;
+using Data.Enums;
 
 namespace Core.UserServices
 {
@@ -6,5 +7,6 @@ namespace Core.UserServices
     {
         Task<string> Login(LoginDto loginDto);
         Task<bool> Register(UserDto userDto);
+        Task<bool> UpdateUserRole(Guid userId, UserRoleEnum role);
     }
 }

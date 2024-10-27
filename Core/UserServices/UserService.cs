@@ -65,6 +65,17 @@ namespace Core.UserServices
             }
             return false;
         }
+        public async Task<bool> UpdateUserRole(Guid userId, UserRoleEnum role)
+        {
+            var user = _context.Users.FirstOrDefault(u => u.Id == userId);
+            if (user != null)
+            {
+                user.Role = role;
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            return false;
+        }
 
 
     }
